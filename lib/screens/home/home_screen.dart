@@ -1,3 +1,4 @@
+import 'package:digicash/screens/calculators/annuity_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:digicash/screens/calculators/amortization_screen.dart';
 import 'package:digicash/screens/calculators/arithmetic_gradient_screen.dart';
@@ -199,14 +200,14 @@ class HomeContent extends StatelessWidget {
                     ),
                     _buildCalculatorCard(
                       context,
-                      'Amortización',
-                      Icons.account_balance_outlined,
-                      Colors.orange,
+                      'Anualidades',
+                      Icons.payments,
+                      Colors.deepPurple,
                       () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const AmortizationScreen(),
+                            builder: (_) => const AnnuityScreen(),
                           ),
                         );
                       },
@@ -217,12 +218,12 @@ class HomeContent extends StatelessWidget {
                       Icons.trending_up,
                       Colors.purple,
                       () {
-                        Navigator.push(
+                        /* Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => const ArithmeticGradientScreen(),
                           ),
-                        );
+                        );*/
                       },
                     ),
                   ],

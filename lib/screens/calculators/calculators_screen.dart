@@ -1,3 +1,4 @@
+import 'package:digicash/screens/calculators/annuity_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:digicash/screens/calculators/simple_interest_screen.dart';
 import 'package:digicash/screens/calculators/compound_intereset_screen.dart';
@@ -79,16 +80,30 @@ class CalculatorsScreen extends StatelessWidget {
                     ),
                     _buildCalculatorCard(
                       context,
-                      'Gradiente Aritmético',
-                      Icons.trending_up,
-                      Colors.orange,
+                      'Anualidades',
+                      Icons.payments,
+                      Colors.deepPurple,
                       () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const ArithmeticGradientScreen(),
+                            builder: (_) => const AnnuityScreen(),
                           ),
                         );
+                      },
+                    ),
+                    _buildCalculatorCard(
+                      context,
+                      'Gradiente Aritmético',
+                      Icons.trending_up,
+                      Colors.orange,
+                      () {
+                        /*Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const ArithmeticGradientScreen(),
+                          ),
+                        );*/
                       },
                     ),
                     _buildCalculatorCard(
@@ -97,12 +112,12 @@ class CalculatorsScreen extends StatelessWidget {
                       Icons.show_chart,
                       Colors.purple,
                       () {
-                        Navigator.push(
+                        /*Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => const GeometricGradientScreen(),
                           ),
-                        );
+                        );*/
                       },
                     ),
                     _buildCalculatorCard(
@@ -111,12 +126,12 @@ class CalculatorsScreen extends StatelessWidget {
                       Icons.account_balance_outlined,
                       Colors.teal,
                       () {
-                        Navigator.push(
+                        /*Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => const AmortizationScreen(),
                           ),
-                        );
+                        );*/
                       },
                     ),
                     _buildCalculatorCard(
@@ -125,10 +140,10 @@ class CalculatorsScreen extends StatelessWidget {
                       Icons.assessment_outlined,
                       Colors.red,
                       () {
-                        Navigator.push(
+                        /*Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => const TirScreen()),
-                        );
+                        );*/
                       },
                     ),
                     _buildCalculatorCard(
@@ -137,10 +152,10 @@ class CalculatorsScreen extends StatelessWidget {
                       Icons.home_outlined,
                       Colors.amber,
                       () {
-                        Navigator.push(
+                        /*Navigator.push(
                           context,
                           MaterialPageRoute(builder: (_) => const UvrScreen()),
-                        );
+                        );*/
                       },
                     ),
                     _buildCalculatorCard(
@@ -149,12 +164,12 @@ class CalculatorsScreen extends StatelessWidget {
                       Icons.attach_money,
                       Colors.indigo,
                       () {
-                        Navigator.push(
+                        /* Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => const InvestmentScreen(),
                           ),
-                        );
+                        );*/
                       },
                     ),
                     _buildCalculatorCard(
@@ -163,12 +178,12 @@ class CalculatorsScreen extends StatelessWidget {
                       Icons.description_outlined,
                       Colors.deepOrange,
                       () {
-                        Navigator.push(
+                        /* Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => const BondsScreen(),
                           ),
-                        );
+                        );*/
                       },
                     ),
                     _buildCalculatorCard(
@@ -177,12 +192,12 @@ class CalculatorsScreen extends StatelessWidget {
                       Icons.trending_down,
                       Colors.brown,
                       () {
-                        Navigator.push(
+                        /*Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => const InflationScreen(),
                           ),
-                        );
+                        );*/
                       },
                     ),
                   ],
