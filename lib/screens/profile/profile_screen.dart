@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:digicash/providers/auth_provider.dart';
 import 'package:digicash/providers/theme_provider.dart';
@@ -32,10 +33,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     _tabController = TabController(length: 3, vsync: this);
 
     // Inicializar con datos de ejemplo
-    _nameController.text = 'Usuario de Prueba';
-    _emailController.text = 'usuario@example.com';
-    _phoneController.text = '300 123 4567';
-    _addressController.text = 'Calle 123 # 45-67, Valledupar';
+    _nameController.text = 'Mario Sosa';
+    _emailController.text = 'mandressosa@unicesar.edu.co';
+    _phoneController.text = '311 280 8028';
+    _addressController.text = 'Calle 23 # 45-67, Valledupar';
   }
 
   @override
@@ -50,90 +51,238 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   @override
   Widget build(BuildContext context) {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-    //final authProvider = Provider.of<AuthProvider>(context);
+    final primaryColor = const Color(0xFF3F51B5); // Indigo
+    final secondaryColor = const Color(0xFF303F9F); // Dark Indigo
+    final accentColor = const Color(0xFFFF4081); // Pink accent
+    final backgroundColor = const Color(0xFFF5F7FA);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mi Perfil'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(
-              themeProvider.themeMode == ThemeMode.dark
-                  ? Icons.light_mode
-                  : Icons.dark_mode,
-            ),
-            onPressed: () {
-              themeProvider.toggleThemeMode();
-            },
-            tooltip: 'Cambiar tema',
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Perfil'),
-            Tab(text: 'Seguridad'),
-            Tab(text: 'Configuración'),
-          ],
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
+      backgroundColor: backgroundColor,
+      body: Column(
         children: [
-          _buildProfileTab(),
-          _buildSecurityTab(),
-          _buildSettingsTab(),
+          // Header con gradiente
+          _buildHeader(primaryColor, secondaryColor),
+
+          // Tabs
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.1),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TabBar(
+              controller: _tabController,
+              labelColor: primaryColor,
+              unselectedLabelColor: Colors.grey[600],
+              indicatorColor: primaryColor,
+              indicatorWeight: 3,
+              tabs: const [
+                Tab(icon: Icon(Icons.person_outline), text: 'Perfil'),
+                Tab(icon: Icon(Icons.security_outlined), text: 'Seguridad'),
+                Tab(icon: Icon(Icons.settings_outlined), text: 'Ajustes'),
+              ],
+            ),
+          ),
+
+          // Contenido de las tabs
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildProfileTab(primaryColor, accentColor),
+                _buildSecurityTab(primaryColor),
+                _buildSettingsTab(primaryColor),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildProfileTab() {
+  Widget _buildHeader(Color primaryColor, Color secondaryColor) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [primaryColor, secondaryColor],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+          child: Column(
+            children: [
+              // Barra superior con título y botón de tema
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Mi Perfil',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 20),
+
+              // Avatar y nombre
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.grey,
+                      child: Icon(Icons.person, size: 40, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _nameController.text,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _emailController.text,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white.withOpacity(0.9),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Text(
+                            'Estudiante',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileTab(Color primaryColor, Color accentColor) {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Center(
-              child: Column(
+            if (!_isEditing)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.grey,
-                    child: Icon(Icons.person, size: 50, color: Colors.white),
-                  ),
-                  const SizedBox(height: 16),
                   Text(
-                    _nameController.text,
-                    style: const TextStyle(
-                      fontSize: 24,
+                    'Información Personal',
+                    style: TextStyle(
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _emailController.text,
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 16),
-                  if (!_isEditing)
-                    TextButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _isEditing = true;
-                        });
-                      },
-                      icon: const Icon(Icons.edit),
-                      label: const Text('Editar Perfil'),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _isEditing = true;
+                      });
+                    },
+                    icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+                    label: const Text('Editar'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
                     ),
+                  ),
                 ],
               ),
-            ),
-            const SizedBox(height: 24),
-            if (_isEditing) _buildEditProfileForm() else _buildProfileInfo(),
+
+            const SizedBox(height: 20),
+
+            if (_isEditing)
+              _buildEditProfileForm(primaryColor)
+            else
+              _buildProfileInfo(),
+
+            if (!_isEditing) ...[
+              const SizedBox(height: 30),
+
+              // Información académica
+              Text(
+                'Información Académica',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildAcademicInfo(primaryColor),
+            ],
           ],
         ),
       ),
@@ -141,64 +290,146 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Widget _buildProfileInfo() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Información Personal',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        _buildInfoItem(
-          'Nombre Completo',
-          _nameController.text,
-          Icons.person_outline,
-        ),
-        _buildInfoItem(
-          'Correo Electrónico',
-          _emailController.text,
-          Icons.email_outlined,
-        ),
-        _buildInfoItem('Teléfono', _phoneController.text, Icons.phone_outlined),
-        _buildInfoItem(
-          'Dirección',
-          _addressController.text,
-          Icons.home_outlined,
-        ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          _buildInfoItem(
+            'Nombre Completo',
+            _nameController.text,
+            Icons.person_outline,
+          ),
+          const Divider(),
+          _buildInfoItem(
+            'Correo Electrónico',
+            _emailController.text,
+            Icons.email_outlined,
+          ),
+          const Divider(),
+          _buildInfoItem(
+            'Teléfono',
+            _phoneController.text,
+            Icons.phone_outlined,
+          ),
+          const Divider(),
+          _buildInfoItem(
+            'Dirección',
+            _addressController.text,
+            Icons.home_outlined,
+          ),
+        ],
+      ),
+    );
+  }
 
-        const SizedBox(height: 24),
-        const Text(
-          'Información Académica',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-        _buildInfoItem(
-          'Universidad',
-          'Universidad Popular del Cesar',
-          Icons.school_outlined,
-        ),
-        _buildInfoItem(
-          'Programa',
-          'Ingeniería de Sistemas',
-          Icons.book_outlined,
-        ),
-        _buildInfoItem(
-          'Semestre',
-          '8vo Semestre',
-          Icons.calendar_today_outlined,
-        ),
-      ],
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(title, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAcademicInfo(Color primaryColor) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          _buildInfoItem(
+            'Universidad',
+            'Universidad Popular del Cesar',
+            Icons.school_outlined,
+          ),
+          const Divider(),
+          _buildInfoItem(
+            'Programa',
+            'Ingeniería de Sistemas',
+            Icons.book_outlined,
+          ),
+          const Divider(),
+          _buildInfoItem(
+            'Semestre',
+            '8vo Semestre',
+            Icons.calendar_today_outlined,
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildInfoItem(String label, String value, IconData icon) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
+      padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.grey[600], size: 20),
-          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: Colors.grey[700], size: 20),
+          ),
+          const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,7 +439,13 @@ class _ProfileScreenState extends State<ProfileScreen>
                   style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 4),
-                Text(value, style: const TextStyle(fontSize: 16)),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
@@ -217,144 +454,112 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildEditProfileForm() {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Editar Información Personal',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
-          CustomTextField(
-            controller: _nameController,
-            label: 'Nombre Completo',
-            hint: 'Ingresa tu nombre completo',
-            prefixIcon: Icons.person_outline,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor ingresa tu nombre';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          CustomTextField(
-            controller: _emailController,
-            label: 'Correo Electrónico',
-            hint: 'Ingresa tu correo electrónico',
-            keyboardType: TextInputType.emailAddress,
-            prefixIcon: Icons.email_outlined,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor ingresa tu correo';
-              }
-              if (!RegExp(
-                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-              ).hasMatch(value)) {
-                return 'Ingresa un correo válido';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          CustomTextField(
-            controller: _phoneController,
-            label: 'Teléfono',
-            hint: 'Ingresa tu número de teléfono',
-            keyboardType: TextInputType.phone,
-            prefixIcon: Icons.phone_outlined,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor ingresa tu teléfono';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          CustomTextField(
-            controller: _addressController,
-            label: 'Dirección',
-            hint: 'Ingresa tu dirección',
-            prefixIcon: Icons.home_outlined,
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Por favor ingresa tu dirección';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: CustomButton(
-                  text: 'Guardar Cambios',
-                  isLoading: _isLoading,
-                  onPressed: _saveProfile,
-                ),
-              ),
-              const SizedBox(width: 16),
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _isEditing = false;
-                  });
-                },
-                child: const Text('Cancelar'),
-              ),
-            ],
+  Widget _buildEditProfileForm(Color primaryColor) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSecurityTab() {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.all(20),
+      child: Form(
+        key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Seguridad de la Cuenta',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              'Editar Información Personal',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 20),
+            CustomTextField(
+              controller: _nameController,
+              label: 'Nombre Completo',
+              hint: 'Ingresa tu nombre completo',
+              prefixIcon: Icons.person_outline,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Por favor ingresa tu nombre';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            CustomTextField(
+              controller: _emailController,
+              label: 'Correo Electrónico',
+              hint: 'Ingresa tu correo electrónico',
+              keyboardType: TextInputType.emailAddress,
+              prefixIcon: Icons.email_outlined,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Por favor ingresa tu correo';
+                }
+                if (!RegExp(
+                  r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                ).hasMatch(value)) {
+                  return 'Ingresa un correo válido';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            CustomTextField(
+              controller: _phoneController,
+              label: 'Teléfono',
+              hint: 'Ingresa tu número de teléfono',
+              keyboardType: TextInputType.phone,
+              prefixIcon: Icons.phone_outlined,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Por favor ingresa tu teléfono';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            CustomTextField(
+              controller: _addressController,
+              label: 'Dirección',
+              hint: 'Ingresa tu dirección',
+              prefixIcon: Icons.home_outlined,
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Por favor ingresa tu dirección';
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 24),
-            _buildSecurityOption(
-              'Cambiar Contraseña',
-              'Actualiza tu contraseña periódicamente para mayor seguridad',
-              Icons.lock_outline,
-              () {
-                _showChangePasswordDialog();
-              },
-            ),
-            _buildSecurityOption(
-              'Verificación en Dos Pasos',
-              'Añade una capa extra de seguridad a tu cuenta',
-              Icons.security_outlined,
-              () {
-                _showComingSoonDialog('Verificación en Dos Pasos');
-              },
-            ),
-            _buildSecurityOption(
-              'Dispositivos Conectados',
-              'Administra los dispositivos que tienen acceso a tu cuenta',
-              Icons.devices_outlined,
-              () {
-                _showComingSoonDialog('Gestión de Dispositivos Conectados');
-              },
-            ),
-            _buildSecurityOption(
-              'Historial de Actividad',
-              'Revisa la actividad reciente de tu cuenta',
-              Icons.history_outlined,
-              () {
-                _showComingSoonDialog('Historial de Actividad');
-              },
+            Row(
+              children: [
+                Expanded(
+                  child: CustomButton(
+                    text: 'Guardar Cambios',
+                    isLoading: _isLoading,
+                    onPressed: _saveProfile,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      _isEditing = false;
+                    });
+                  },
+                  child: const Text('Cancelar'),
+                ),
+              ],
             ),
           ],
         ),
@@ -362,73 +567,128 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildSettingsTab() {
-    final themeProvider = Provider.of<ThemeProvider>(context);
-
+  Widget _buildSecurityTab(Color primaryColor) {
     return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Configuración General',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 24),
-            _buildSettingItem(
-              'Tema de la Aplicación',
-              themeProvider.themeMode == ThemeMode.dark ? 'Oscuro' : 'Claro',
-              Icons.palette_outlined,
-              Switch(
-                value: themeProvider.themeMode == ThemeMode.dark,
-                onChanged: (value) {
-                  themeProvider.toggleThemeMode();
-                },
+            Text(
+              'Seguridad de la Cuenta',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
               ),
             ),
-            _buildSettingItem(
-              'Notificaciones',
-              'Activadas',
-              Icons.notifications_outlined,
-              Switch(
-                value: true,
-                onChanged: (value) {
-                  _showComingSoonDialog('Configuración de Notificaciones');
-                },
+            const SizedBox(height: 20),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _buildSecurityOption(
+                    'Cambiar Contraseña',
+                    'Actualiza tu contraseña periódicamente para mayor seguridad',
+                    Icons.lock_outline,
+                    Colors.blue,
+                    () {
+                      _showChangePasswordDialog();
+                    },
+                  ),
+                  const Divider(height: 1, indent: 70),
+                  _buildSecurityOption(
+                    'Verificación en Dos Pasos',
+                    'Añade una capa extra de seguridad a tu cuenta',
+                    Icons.security_outlined,
+                    Colors.green,
+                    () {
+                      _showComingSoonDialog('Verificación en Dos Pasos');
+                    },
+                  ),
+                  const Divider(height: 1, indent: 70),
+                  _buildSecurityOption(
+                    'Dispositivos Conectados',
+                    'Administra los dispositivos que tienen acceso a tu cuenta',
+                    Icons.devices_outlined,
+                    Colors.orange,
+                    () {
+                      _showComingSoonDialog(
+                        'Gestión de Dispositivos Conectados',
+                      );
+                    },
+                  ),
+                  const Divider(height: 1, indent: 70),
+                  _buildSecurityOption(
+                    'Historial de Actividad',
+                    'Revisa la actividad reciente de tu cuenta',
+                    Icons.history_outlined,
+                    Colors.purple,
+                    () {
+                      _showComingSoonDialog('Historial de Actividad');
+                    },
+                  ),
+                ],
               ),
             ),
-            _buildSettingItem(
-              'Idioma',
-              'Español',
-              Icons.language_outlined,
-              IconButton(
-                icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                onPressed: () {
-                  _showComingSoonDialog('Cambio de Idioma');
-                },
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'Información de la Aplicación',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            _buildInfoItem('Versión', '1.0.0', Icons.info_outline),
-            _buildInfoItem(
-              'Desarrollado por',
-              'Universidad Popular del Cesar',
-              Icons.code,
-            ),
-            _buildInfoItem('Año', '2023', Icons.calendar_today_outlined),
 
-            const SizedBox(height: 32),
-            CustomButton(
-              text: 'Cerrar Sesión',
-              icon: Icons.logout,
-              isOutlined: true,
-              onPressed: _logout,
+            const SizedBox(height: 30),
+
+            Text(
+              'Privacidad',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _buildSecurityOption(
+                    'Datos Personales',
+                    'Administra cómo se utilizan tus datos personales',
+                    Icons.privacy_tip_outlined,
+                    Colors.red,
+                    () {
+                      _showComingSoonDialog('Gestión de Datos Personales');
+                    },
+                  ),
+                  const Divider(height: 1, indent: 70),
+                  _buildSecurityOption(
+                    'Permisos de la Aplicación',
+                    'Controla los permisos que tiene la aplicación',
+                    Icons.app_settings_alt_outlined,
+                    Colors.teal,
+                    () {
+                      _showComingSoonDialog('Permisos de la Aplicación');
+                    },
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -440,21 +700,22 @@ class _ProfileScreenState extends State<ProfileScreen>
     String title,
     String description,
     IconData icon,
+    Color color,
     VoidCallback onTap,
   ) {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor.withOpacity(0.1),
+                color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, color: Theme.of(context).primaryColor),
+              child: Icon(icon, color: color),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -475,7 +736,206 @@ class _ProfileScreenState extends State<ProfileScreen>
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 16),
+            const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSettingsTab(Color primaryColor) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Configuración General',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _buildSettingItem(
+                    'Tema de la Aplicación',
+                    'Claro',
+                    Icons.palette_outlined,
+                    Colors.purple,
+                    Switch(
+                      value: true,
+                      onChanged: (value) {},
+                      activeColor: primaryColor,
+                    ),
+                  ),
+                  const Divider(height: 1, indent: 70),
+                  _buildSettingItem(
+                    'Notificaciones',
+                    'Desactivadas',
+                    Icons.notifications_outlined,
+                    Colors.amber,
+                    Switch(
+                      value: false,
+                      onChanged: (value) {
+                        _showComingSoonDialog(
+                          'Configuración de Notificaciones',
+                        );
+                      },
+                      activeColor: primaryColor,
+                    ),
+                  ),
+                  const Divider(height: 1, indent: 70),
+                  _buildSettingItem(
+                    'Idioma',
+                    'Español',
+                    Icons.language_outlined,
+                    Colors.blue,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Español',
+                            style: TextStyle(
+                              color: Colors.grey[800],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.arrow_drop_down,
+                            size: 18,
+                            color: Colors.grey,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            Text(
+              'Información de la Aplicación',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[800],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  _buildInfoItem('Versión', '1.0.0', Icons.info_outline),
+                  const Divider(height: 1, indent: 70),
+                  _buildInfoItem(
+                    'Desarrollado por',
+                    'Mario Sosa & Camilo Sierra',
+                    Icons.code,
+                  ),
+                  const Divider(height: 1, indent: 70),
+                  _buildInfoItem('Año', '2025', Icons.calendar_today_outlined),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.logout,
+                      color: Colors.red,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  const Text(
+                    'Cerrar Sesión',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Cerrar sesión en este dispositivo',
+                    style: TextStyle(color: Colors.grey[700]),
+                  ),
+                  const SizedBox(height: 15),
+                  ElevatedButton(
+                    onPressed: _logout,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 30,
+                        vertical: 12,
+                      ),
+                    ),
+                    child: const Text(
+                      'Cerrar Sesión',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -486,19 +946,20 @@ class _ProfileScreenState extends State<ProfileScreen>
     String title,
     String value,
     IconData icon,
+    Color color,
     Widget trailing,
   ) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 20.0),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Theme.of(context).primaryColor.withOpacity(0.1),
+              color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: Theme.of(context).primaryColor),
+            child: Icon(icon, color: color),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -568,6 +1029,9 @@ class _ProfileScreenState extends State<ProfileScreen>
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               title: const Text('Cambiar Contraseña'),
               content: Form(
                 key: formKey,
@@ -669,7 +1133,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Próximamente'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -709,6 +1175,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       context: context,
       builder: (context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: const Text('Cerrar Sesión'),
           content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
           actions: [

@@ -1,3 +1,4 @@
+import 'package:digicash/screens/home/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:digicash/widgets/custom_button.dart';
 import 'package:digicash/screens/calculators/amortization_screen.dart';
@@ -15,10 +16,10 @@ class _LoansScreenState extends State<LoansScreen> {
     {
       'id': '1',
       'name': 'Préstamo Personal',
-      'amount': 5000000,
+      'amount': 500000.00,
       'term': 12,
       'rate': 12.5,
-      'payment': 445000,
+      'payment': 445000.00,
       'startDate': '2023-10-15',
       'progress': 0.7,
       'type': 'Personal',
@@ -26,10 +27,10 @@ class _LoansScreenState extends State<LoansScreen> {
     {
       'id': '2',
       'name': 'Préstamo Educativo',
-      'amount': 2500000,
+      'amount': 2500000.00,
       'term': 24,
       'rate': 8.0,
-      'payment': 113000,
+      'payment': 113000.00,
       'startDate': '2023-08-01',
       'progress': 0.3,
       'type': 'Educativo',
@@ -37,10 +38,10 @@ class _LoansScreenState extends State<LoansScreen> {
     {
       'id': '3',
       'name': 'Crédito Hipotecario',
-      'amount': 120000000,
+      'amount': 1200000.00,
       'term': 240,
       'rate': 9.5,
-      'payment': 1100000,
+      'payment': 1100000.00,
       'startDate': '2022-05-10',
       'progress': 0.05,
       'type': 'Hipotecario',
@@ -49,22 +50,20 @@ class _LoansScreenState extends State<LoansScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final primaryColor = const Color(0xFF3F51B5); // Indigo
+    final secondaryColor = const Color(0xFF303F9F); // Dark Indigo
+    final backgroundColor = const Color(0xFFF5F7FA);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mis Préstamos'),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () {
-              _showFilterDialog();
-            },
-            tooltip: 'Filtrar préstamos',
+      backgroundColor: backgroundColor,
+      body: Column(
+        children: [
+          // Encabezado con borde integrado
+          _buildHeader(primaryColor, secondaryColor),
+          // Contenido principal
+          Expanded(
+            child: _loans.isEmpty ? _buildEmptyState() : _buildLoansList(),
           ),
         ],
-      ),
-      body: SafeArea(
-        child: _loans.isEmpty ? _buildEmptyState() : _buildLoansList(),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
@@ -72,6 +71,64 @@ class _LoansScreenState extends State<LoansScreen> {
         },
         child: const Icon(Icons.add),
         tooltip: 'Nuevo préstamo',
+      ),
+    );
+  }
+
+  Widget _buildHeader(Color primaryColor, Color secondaryColor) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [primaryColor, secondaryColor],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            // Barra de título
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 15, 20, 25),
+              child: Row(
+                //mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Botón de retroceso
+                  IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => HomeScreen()),
+                      );
+                    },
+                  ),
+                  // Título centrado
+                  Text(
+                    'Mis Préstamos',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -133,7 +190,7 @@ class _LoansScreenState extends State<LoansScreen> {
                 context,
               ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20, width: 20),
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -142,74 +199,6 @@ class _LoansScreenState extends State<LoansScreen> {
                 final loan = _loans[index];
                 return _buildLoanCard(loan);
               },
-            ),
-            const SizedBox(height: 16),
-            const Divider(),
-            const SizedBox(height: 16),
-            Text(
-              'Herramientas de Préstamos',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildToolCard(
-                    'Calculadora de Amortización',
-                    Icons.calculate_outlined,
-                    Colors.blue,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const AmortizationScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildToolCard(
-                    'Comparador de Préstamos',
-                    Icons.compare_arrows,
-                    Colors.green,
-                    () {
-                      _showComingSoonDialog('Comparador de Préstamos');
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildToolCard(
-                    'Capacidad de Endeudamiento',
-                    Icons.account_balance_wallet_outlined,
-                    Colors.orange,
-                    () {
-                      _showComingSoonDialog(
-                        'Calculadora de Capacidad de Endeudamiento',
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _buildToolCard(
-                    'Historial de Pagos',
-                    Icons.history,
-                    Colors.purple,
-                    () {
-                      _showComingSoonDialog('Historial de Pagos');
-                    },
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -533,7 +522,7 @@ class _LoansScreenState extends State<LoansScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const AmortizationScreen(),
+                            builder: (_) => const AmortizacionScreen(),
                           ),
                         );
                       },

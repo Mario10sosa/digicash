@@ -1,19 +1,23 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:math';
 
-class CompoundInterestScreen extends StatefulWidget {
-  const CompoundInterestScreen({super.key});
+class CapitalizacionScreen extends StatefulWidget {
+  const CapitalizacionScreen({super.key});
 
   @override
-  State<CompoundInterestScreen> createState() => _CompoundInterestScreenState();
+  State<CapitalizacionScreen> createState() => _CapitalizacionScreenState();
 }
 
-class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
-  final _capitalController = TextEditingController(); // Capital (C)
-  final _tasaController = TextEditingController(); // Tasa de interés (i)
-  final _interesController = TextEditingController(); // Interés compuesto (IC)
-  final _montoController = TextEditingController(); // Monto compuesto (MC)
+class _CapitalizacionScreenState extends State<CapitalizacionScreen> {
+  // Color principal cambiado a cyan
+  final Color _primaryColor = const Color(0xFF00BCD4);
+
+  final _principalController = TextEditingController();
+  final _rateController = TextEditingController();
+  final _finalAmountController = TextEditingController();
+  final _deferralPeriodController =
+      TextEditingController(); // Para capitalización diferida
 
   // Controladores para cada unidad de tiempo
   final _yearsController = TextEditingController();
@@ -22,7 +26,7 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
 
   // Resultados
   double _calculatedValue = 0.0;
-  double _totalAmount = 0.0;
+  double _interestEarned = 0.0;
   bool _hasCalculated = false;
 
   // Controlador para el ScrollView
@@ -33,16 +37,61 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
 
   // Variable a calcular
   String _variableToCalculate =
-      'interes'; // 'interes', 'capital', 'tasa', 'tiempo', 'monto'
+      'finalAmount'; // 'finalAmount', 'principal', 'rate', 'time'
 
-  // Opciones para variable a calcular
-  final List<Map<String, dynamic>> _calculationOptions = [
-    {'label': 'Interés compuesto (IC)', 'value': 'interes'},
-    {'label': 'Capital inicial (C)', 'value': 'capital'},
-    {'label': 'Tasa de interés (i)', 'value': 'tasa'},
-    {'label': 'Tiempo (t)', 'value': 'tiempo'},
-    {'label': 'Monto compuesto (MC)', 'value': 'monto'},
+  // Tipos de capitalización
+  final List<Map<String, dynamic>> _capitalizationTypes = [
+    {
+      'label': 'Capitalización Simple',
+      'value': 'simple',
+      'formula': 'M = C(1 + i×t)',
+      'description':
+          'El interés se calcula siempre sobre el capital inicial, sin reinversión.',
+    },
+    {
+      'label': 'Capitalización Compuesta',
+      'value': 'compound',
+      'formula': 'M = C(1 + i/n)^(n×t)',
+      'description':
+          'El interés generado en cada período se suma al capital para el siguiente período.',
+    },
+    {
+      'label': 'Capitalización Continua',
+      'value': 'continuous',
+      'formula': 'M = C×e^(i×t)',
+      'description':
+          'La capitalización ocurre de manera continua, usando la función exponencial.',
+    },
+    {
+      'label': 'Capitalización Periódica',
+      'value': 'periodic',
+      'formula': 'M = C(1 + i)^t',
+      'description':
+          'Similar a la compuesta, pero con períodos específicos de capitalización.',
+    },
+    {
+      'label': 'Capitalización Anticipada',
+      'value': 'anticipated',
+      'formula': 'M = C/(1 - i×t)',
+      'description': 'El interés se paga al inicio del período, no al final.',
+    },
+    {
+      'label': 'Capitalización Diferida',
+      'value': 'deferred',
+      'formula': 'M = C(1 + i)^(t-d)',
+      'description':
+          'La capitalización comienza después de un período de diferimiento (d).',
+    },
   ];
+
+  // Tipo de capitalización seleccionado (por defecto: compuesta)
+  Map<String, dynamic> _selectedCapitalizationType = {
+    'label': 'Capitalización Compuesta',
+    'value': 'compound',
+    'formula': 'M = C(1 + i/n)^(n×t)',
+    'description':
+        'El interés generado en cada período se suma al capital para el siguiente período.',
+  };
 
   // Opciones para unidades de tiempo en modo simple
   final List<Map<String, dynamic>> _timeUnits = [
@@ -60,273 +109,31 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
     'factor': 1.0,
   };
 
-  // Opciones para frecuencia de capitalización
+  // Frecuencia de capitalización
   final List<Map<String, dynamic>> _compoundingFrequencies = [
-    {'label': 'Anual', 'value': 'annual', 'periods': 1},
-    {'label': 'Semestral', 'value': 'semiannual', 'periods': 2},
-    {'label': 'Trimestral', 'value': 'quarterly', 'periods': 4},
-    {'label': 'Mensual', 'value': 'monthly', 'periods': 12},
-    {'label': 'Diaria', 'value': 'daily', 'periods': 365},
+    {'label': 'Anual', 'value': 'annual', 'times': 1},
+    {'label': 'Semestral', 'value': 'semiannual', 'times': 2},
+    {'label': 'Trimestral', 'value': 'quarterly', 'times': 4},
+    {'label': 'Mensual', 'value': 'monthly', 'times': 12},
+    {'label': 'Diaria', 'value': 'daily', 'times': 365},
   ];
 
   // Frecuencia de capitalización seleccionada (por defecto: anual)
   Map<String, dynamic> _selectedFrequency = {
     'label': 'Anual',
     'value': 'annual',
-    'periods': 1,
-  };
-
-  // Opciones para formato de tasa de interés
-  final List<Map<String, dynamic>> _interestRateFormats = [
-    {'label': 'Anual', 'value': 'annual', 'factor': 1.0},
-    {'label': 'Semestral', 'value': 'semiannual', 'factor': 2.0},
-    {'label': 'Trimestral', 'value': 'quarterly', 'factor': 4.0},
-    {'label': 'Mensual', 'value': 'monthly', 'factor': 12.0},
-    {'label': 'Diaria', 'value': 'daily', 'factor': 365.0},
-  ];
-
-  // Formato de tasa de interés seleccionado (por defecto: anual)
-  Map<String, dynamic> _selectedRateFormat = {
-    'label': 'Anual',
-    'value': 'annual',
-    'factor': 1.0,
+    'times': 1,
   };
 
   // Controlador para tiempo en modo simple
   final _simpleTimeController = TextEditingController();
 
-  // Agregar estas variables de estado para validación después de las variables existentes
-  // Variables para validación
-  final Map<String, String> _errors = {
-    'capital': '',
-    'tasa': '',
-    'monto': '',
-    'tiempo': '',
-  };
-
-  // Colores para validación
-  final Color _errorColor = Colors.red;
-  final Color _successColor = const Color(0xFF4CAF50);
-
-  // Validar campo de capital
-  void _validateCapital(String value) {
-    setState(() {
-      if (value.isEmpty) {
-        _errors['capital'] = 'El capital es requerido';
-      } else if (double.tryParse(value.replaceAll(',', '.')) == null) {
-        _errors['capital'] = 'Ingrese un número válido';
-      } else if (double.parse(value.replaceAll(',', '.')) <= 0) {
-        _errors['capital'] = 'El capital debe ser mayor a 0';
-      } else if (double.parse(value.replaceAll(',', '.')) > 1000000000) {
-        _errors['capital'] = 'El valor es demasiado grande';
-      } else {
-        _errors['capital'] = '';
-      }
-    });
-  }
-
-  // Validar campo de tasa
-  void _validateTasa(String value) {
-    setState(() {
-      if (value.isEmpty) {
-        _errors['tasa'] = 'La tasa es requerida';
-      } else if (double.tryParse(value.replaceAll(',', '.')) == null) {
-        _errors['tasa'] = 'Ingrese un número válido';
-      } else if (double.parse(value.replaceAll(',', '.')) <= 0) {
-        _errors['tasa'] = 'La tasa debe ser mayor a 0';
-      } else if (double.parse(value.replaceAll(',', '.')) > 100) {
-        _errors['tasa'] = 'La tasa no debe exceder el 100%';
-      } else {
-        _errors['tasa'] = '';
-      }
-    });
-  }
-
-  // Validar campo de monto
-  void _validateMonto(String value) {
-    setState(() {
-      if (value.isEmpty) {
-        _errors['monto'] = 'El monto es requerido';
-      } else if (double.tryParse(value.replaceAll(',', '.')) == null) {
-        _errors['monto'] = 'Ingrese un número válido';
-      } else if (double.parse(value.replaceAll(',', '.')) <= 0) {
-        _errors['monto'] = 'El monto debe ser mayor a 0';
-      } else if (double.parse(value.replaceAll(',', '.')) > 1000000000) {
-        _errors['monto'] = 'El valor es demasiado grande';
-      } else {
-        _errors['monto'] = '';
-      }
-    });
-  }
-
-  // Validar campo de tiempo simple
-  void _validateTiempoSimple(String value) {
-    setState(() {
-      if (value.isEmpty) {
-        _errors['tiempo'] = 'El tiempo es requerido';
-      } else if (double.tryParse(value.replaceAll(',', '.')) == null) {
-        _errors['tiempo'] = 'Ingrese un número válido';
-      } else if (double.parse(value.replaceAll(',', '.')) <= 0) {
-        _errors['tiempo'] = 'El tiempo debe ser mayor a 0';
-      } else if (double.parse(value.replaceAll(',', '.')) > 100) {
-        _errors['tiempo'] = 'El valor es demasiado grande';
-      } else {
-        _errors['tiempo'] = '';
-      }
-    });
-  }
-
-  // Validar campos de tiempo avanzado
-  void _validateTiempoAvanzado() {
-    setState(() {
-      if (_yearsController.text.isEmpty &&
-          _monthsController.text.isEmpty &&
-          _daysController.text.isEmpty) {
-        _errors['tiempo'] = 'Ingrese al menos un valor de tiempo';
-      } else {
-        // Validar años
-        if (_yearsController.text.isNotEmpty) {
-          if (double.tryParse(_yearsController.text.replaceAll(',', '.')) ==
-              null) {
-            _errors['tiempo'] = 'Años: ingrese un número válido';
-            return;
-          } else if (double.parse(_yearsController.text.replaceAll(',', '.')) <
-              0) {
-            _errors['tiempo'] = 'Años: debe ser un valor positivo';
-            return;
-          } else if (double.parse(_yearsController.text.replaceAll(',', '.')) >
-              100) {
-            _errors['tiempo'] = 'Años: valor demasiado grande';
-            return;
-          }
-        }
-
-        // Validar meses
-        if (_monthsController.text.isNotEmpty) {
-          if (double.tryParse(_monthsController.text.replaceAll(',', '.')) ==
-              null) {
-            _errors['tiempo'] = 'Meses: ingrese un número válido';
-            return;
-          } else if (double.parse(_monthsController.text.replaceAll(',', '.')) <
-              0) {
-            _errors['tiempo'] = 'Meses: debe ser un valor positivo';
-            return;
-          } else if (double.parse(_monthsController.text.replaceAll(',', '.')) >
-              1200) {
-            _errors['tiempo'] = 'Meses: valor demasiado grande';
-            return;
-          }
-        }
-
-        // Validar días
-        if (_daysController.text.isNotEmpty) {
-          if (double.tryParse(_daysController.text.replaceAll(',', '.')) ==
-              null) {
-            _errors['tiempo'] = 'Días: ingrese un número válido';
-            return;
-          } else if (double.parse(_daysController.text.replaceAll(',', '.')) <
-              0) {
-            _errors['tiempo'] = 'Días: debe ser un valor positivo';
-            return;
-          } else if (double.parse(_daysController.text.replaceAll(',', '.')) >
-              36500) {
-            _errors['tiempo'] = 'Días: valor demasiado grande';
-            return;
-          }
-        }
-
-        _errors['tiempo'] = '';
-      }
-    });
-  }
-
-  // Verificar si hay errores de validación
-  bool _hasValidationErrors() {
-    // Determinar qué campos necesitan validación según la variable a calcular
-    List<String> fieldsToValidate = [];
-
-    switch (_variableToCalculate) {
-      case 'interes':
-        fieldsToValidate = ['capital', 'monto'];
-        break;
-      case 'capital':
-        fieldsToValidate = ['monto', 'tasa', 'tiempo'];
-        break;
-      case 'tasa':
-        fieldsToValidate = ['capital', 'monto', 'tiempo'];
-        break;
-      case 'tiempo':
-        fieldsToValidate = ['capital', 'tasa', 'monto'];
-        break;
-      case 'monto':
-        fieldsToValidate = ['capital', 'tasa', 'tiempo'];
-        break;
-    }
-
-    // Validar los campos requeridos
-    for (String field in fieldsToValidate) {
-      if (field == 'capital' && _variableToCalculate != 'capital') {
-        _validateCapital(_capitalController.text);
-      } else if (field == 'tasa' && _variableToCalculate != 'tasa') {
-        _validateTasa(_tasaController.text);
-      } else if (field == 'monto' && _variableToCalculate != 'monto') {
-        _validateMonto(_montoController.text);
-      } else if (field == 'tiempo' && _variableToCalculate != 'tiempo') {
-        if (_advancedTimeMode) {
-          _validateTiempoAvanzado();
-        } else {
-          _validateTiempoSimple(_simpleTimeController.text);
-        }
-      }
-    }
-
-    // Verificar si hay errores en los campos requeridos
-    for (String field in fieldsToValidate) {
-      if (_errors[field]!.isNotEmpty) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  // Mostrar mensaje de error
-  void _showErrorMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: _errorColor,
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(10),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    // Agregar listeners para validación en tiempo real
-    _capitalController.addListener(
-      () => _validateCapital(_capitalController.text),
-    );
-    _tasaController.addListener(() => _validateTasa(_tasaController.text));
-    _montoController.addListener(() => _validateMonto(_montoController.text));
-    _simpleTimeController.addListener(
-      () => _validateTiempoSimple(_simpleTimeController.text),
-    );
-    _yearsController.addListener(_validateTiempoAvanzado);
-    _monthsController.addListener(_validateTiempoAvanzado);
-    _daysController.addListener(_validateTiempoAvanzado);
-  }
-
   @override
   void dispose() {
-    _capitalController.dispose();
-    _tasaController.dispose();
-    _interesController.dispose();
-    _montoController.dispose();
+    _principalController.dispose();
+    _rateController.dispose();
+    _finalAmountController.dispose();
+    _deferralPeriodController.dispose();
     _simpleTimeController.dispose();
     _yearsController.dispose();
     _monthsController.dispose();
@@ -361,120 +168,42 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
     }
   }
 
-  // Convertir la tasa de interés al formato anual
-  double _getAnnualRate() {
-    if (_tasaController.text.isEmpty) return 0;
-
-    double inputRate =
-        double.parse(_tasaController.text.replaceAll(',', '.')) / 100;
-    double annualRate;
-
-    // Si la tasa ya es anual, no necesita conversión
-    if (_selectedRateFormat['value'] == 'annual') {
-      annualRate = inputRate;
-    } else {
-      // Convertir de tasa periódica a tasa anual efectiva
-      // Fórmula: (1 + i)^n - 1, donde i es la tasa periódica y n es el número de períodos por año
-      annualRate = pow(1 + inputRate, _selectedRateFormat['factor']) - 1;
-    }
-
-    return annualRate;
-  }
-
-  // Obtener la tasa periódica según la frecuencia de capitalización
-  double _getPeriodicRate() {
-    double annualRate = _getAnnualRate();
-    int periodsPerYear = _selectedFrequency['periods'];
-
-    // Convertir tasa anual efectiva a tasa periódica
-    // Fórmula: (1 + i)^(1/n) - 1, donde i es la tasa anual y n es el número de períodos por año
-    return pow(1 + annualRate, 1 / periodsPerYear) - 1;
-  }
-
-  // Reemplazar el método _calculate() con esta versión mejorada
   void _calculate() {
     // Ocultar el teclado
     FocusScope.of(context).unfocus();
 
-    // Validar campos antes de calcular
-    if (_hasValidationErrors()) {
-      // Buscar el primer error para mostrarlo
-      String errorMessage = '';
-      _errors.forEach((field, error) {
-        if (error.isNotEmpty && errorMessage.isEmpty) {
-          errorMessage = error;
-        }
-      });
-
-      _showErrorMessage(errorMessage);
-      return;
-    }
-
     try {
       switch (_variableToCalculate) {
-        case 'interes':
-          _calculateInteres();
+        case 'finalAmount':
+          _calculateFinalAmount();
           break;
-        case 'capital':
-          _calculateCapital();
+        case 'principal':
+          _calculatePrincipal();
           break;
-        case 'tasa':
-          _calculateTasa();
+        case 'rate':
+          _calculateRate();
           break;
-        case 'tiempo':
-          _calculateTiempo();
-          break;
-        case 'monto':
-          _calculateMonto();
+        case 'time':
+          _calculateTime();
           break;
       }
     } catch (e) {
-      _showErrorMessage('Error en el cálculo: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error en el cálculo: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
-  // Calcular Interés Compuesto (IC = MC - C)
-  void _calculateInteres() {
+  void _calculateFinalAmount() {
     // Validar que los campos principales tengan valores
-    if (_capitalController.text.isEmpty || _montoController.text.isEmpty) {
+    if (_principalController.text.isEmpty || _rateController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Por favor completa los campos de capital y monto compuesto',
-          ),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Convertir valores a números
-    final capital = double.parse(_capitalController.text.replaceAll(',', '.'));
-    final montoCompuesto = double.parse(
-      _montoController.text.replaceAll(',', '.'),
-    );
-
-    // Calcular interés compuesto usando la fórmula IC = MC - C
-    final interesCompuesto = montoCompuesto - capital;
-
-    setState(() {
-      _calculatedValue = interesCompuesto;
-      _totalAmount = montoCompuesto;
-      _hasCalculated = true;
-    });
-
-    // Desplazar hacia abajo para mostrar los resultados
-    _scrollToResults();
-  }
-
-  // Calcular Capital (C = MC / (1+i)^n)
-  void _calculateCapital() {
-    // Validar que los campos necesarios tengan valores
-    if (_montoController.text.isEmpty || _tasaController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Por favor completa los campos de monto compuesto y tasa',
+            'Por favor completa los campos de capital y tasa de interés',
           ),
           backgroundColor: Colors.red,
         ),
@@ -507,29 +236,100 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
       }
     }
 
+    // Validar campo de período de diferimiento para capitalización diferida
+    if (_selectedCapitalizationType['value'] == 'deferred' &&
+        _deferralPeriodController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Por favor ingresa el período de diferimiento'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     // Convertir valores a números
-    final montoCompuesto = double.parse(
-      _montoController.text.replaceAll(',', '.'),
+    final principal = double.parse(
+      _principalController.text.replaceAll(',', '.'),
     );
+    final rate =
+        double.parse(_rateController.text.replaceAll(',', '.')) /
+        100; // Convertir a decimal
 
     // Obtener tiempo en años
     final timeInYears = _calculateTimeInYears();
 
-    // Obtener número de períodos de capitalización
-    final periodsPerYear = _selectedFrequency['periods'];
-    final totalPeriods = timeInYears * periodsPerYear;
+    // Calcular según el tipo de capitalización seleccionado
+    double finalAmount = 0.0;
 
-    // Calcular tasa por período
-    final tasaPorPeriodo = _getPeriodicRate();
+    switch (_selectedCapitalizationType['value']) {
+      case 'simple':
+        // Capitalización Simple: M = C(1 + i×t)
+        finalAmount = principal * (1 + rate * timeInYears);
+        break;
 
-    // Calcular capital usando la fórmula C = MC / (1+i)^n
-    final capital = montoCompuesto / pow(1 + tasaPorPeriodo, totalPeriods);
+      case 'compound':
+        // Capitalización Compuesta: M = C(1 + i/n)^(n×t)
+        final compoundingFrequency = _selectedFrequency['times'];
+        finalAmount =
+            principal *
+            pow(
+              1 + (rate / compoundingFrequency),
+              compoundingFrequency * timeInYears,
+            );
+        break;
 
-    // Calcular interés compuesto
+      case 'continuous':
+        // Capitalización Continua: M = C×e^(i×t)
+        finalAmount = principal * exp(rate * timeInYears);
+        break;
+
+      case 'periodic':
+        // Capitalización Periódica: M = C(1 + i)^t
+        finalAmount = principal * pow(1 + rate, timeInYears);
+        break;
+
+      case 'anticipated':
+        // Capitalización Anticipada: M = C/(1 - i×t)
+        if (rate * timeInYears >= 1) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Error: Para capitalización anticipada, i×t debe ser menor que 1',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        finalAmount = principal / (1 - rate * timeInYears);
+        break;
+
+      case 'deferred':
+        // Capitalización Diferida: M = C(1 + i)^(t-d)
+        final deferralPeriod = double.parse(
+          _deferralPeriodController.text.replaceAll(',', '.'),
+        );
+        if (deferralPeriod >= timeInYears) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Error: El período de diferimiento debe ser menor que el tiempo total',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        finalAmount = principal * pow(1 + rate, timeInYears - deferralPeriod);
+        break;
+    }
+
+    final interestEarned = finalAmount - principal;
 
     setState(() {
-      _calculatedValue = capital;
-      _totalAmount = montoCompuesto;
+      _calculatedValue = finalAmount;
+      _interestEarned = interestEarned;
       _hasCalculated = true;
     });
 
@@ -537,14 +337,152 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
     _scrollToResults();
   }
 
-  // Calcular Tasa de interés (i = (MC/C)^(1/n) - 1)
-  void _calculateTasa() {
+  void _calculatePrincipal() {
     // Validar que los campos necesarios tengan valores
-    if (_capitalController.text.isEmpty || _montoController.text.isEmpty) {
+    if (_finalAmountController.text.isEmpty || _rateController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Por favor completa los campos de monto final y tasa'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validar que haya al menos un valor de tiempo
+    if (_advancedTimeMode) {
+      if (_yearsController.text.isEmpty &&
+          _monthsController.text.isEmpty &&
+          _daysController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Por favor ingresa al menos un valor de tiempo'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    } else {
+      if (_simpleTimeController.text.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Por favor ingresa el valor de tiempo'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
+    // Validar campo de período de diferimiento para capitalización diferida
+    if (_selectedCapitalizationType['value'] == 'deferred' &&
+        _deferralPeriodController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Por favor ingresa el período de diferimiento'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Convertir valores a números
+    final finalAmount = double.parse(
+      _finalAmountController.text.replaceAll(',', '.'),
+    );
+    final rate =
+        double.parse(_rateController.text.replaceAll(',', '.')) /
+        100; // Convertir a decimal
+
+    // Obtener tiempo en años
+    final timeInYears = _calculateTimeInYears();
+
+    // Calcular según el tipo de capitalización seleccionado
+    double principal = 0.0;
+
+    switch (_selectedCapitalizationType['value']) {
+      case 'simple':
+        // Capitalización Simple: C = M/(1 + i×t)
+        principal = finalAmount / (1 + rate * timeInYears);
+        break;
+
+      case 'compound':
+        // Capitalización Compuesta: C = M/(1 + i/n)^(n×t)
+        final compoundingFrequency = _selectedFrequency['times'];
+        principal =
+            finalAmount /
+            pow(
+              1 + (rate / compoundingFrequency),
+              compoundingFrequency * timeInYears,
+            );
+        break;
+
+      case 'continuous':
+        // Capitalización Continua: C = M/e^(i×t)
+        principal = finalAmount / exp(rate * timeInYears);
+        break;
+
+      case 'periodic':
+        // Capitalización Periódica: C = M/(1 + i)^t
+        principal = finalAmount / pow(1 + rate, timeInYears);
+        break;
+
+      case 'anticipated':
+        // Capitalización Anticipada: C = M(1 - i×t)
+        if (rate * timeInYears >= 1) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Error: Para capitalización anticipada, i×t debe ser menor que 1',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        principal = finalAmount * (1 - rate * timeInYears);
+        break;
+
+      case 'deferred':
+        // Capitalización Diferida: C = M/(1 + i)^(t-d)
+        final deferralPeriod = double.parse(
+          _deferralPeriodController.text.replaceAll(',', '.'),
+        );
+        if (deferralPeriod >= timeInYears) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Error: El período de diferimiento debe ser menor que el tiempo total',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        principal = finalAmount / pow(1 + rate, timeInYears - deferralPeriod);
+        break;
+    }
+
+    final interestEarned = finalAmount - principal;
+
+    setState(() {
+      _calculatedValue = principal;
+      _interestEarned = interestEarned;
+      _hasCalculated = true;
+    });
+
+    // Desplazar hacia abajo para mostrar los resultados
+    _scrollToResults();
+  }
+
+  void _calculateRate() {
+    // Validar que los campos necesarios tengan valores
+    if (_principalController.text.isEmpty ||
+        _finalAmountController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Por favor completa los campos de capital y monto compuesto',
+            'Por favor completa los campos de capital y monto final',
           ),
           backgroundColor: Colors.red,
         ),
@@ -577,60 +515,12 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
       }
     }
 
-    // Convertir valores a números
-    final capital = double.parse(_capitalController.text.replaceAll(',', '.'));
-    final montoCompuesto = double.parse(
-      _montoController.text.replaceAll(',', '.'),
-    );
-
-    // Obtener tiempo en años
-    final timeInYears = _calculateTimeInYears();
-
-    // Obtener número de períodos de capitalización
-    final periodsPerYear = _selectedFrequency['periods'];
-    final totalPeriods = timeInYears * periodsPerYear;
-
-    // Calcular tasa de interés por período usando la fórmula i = (MC/C)^(1/n) - 1
-    final tasaPorPeriodo = pow(montoCompuesto / capital, 1 / totalPeriods) - 1;
-
-    // Convertir a tasa anual efectiva
-
-    // Convertir a la tasa en el formato seleccionado por el usuario
-    double tasaEnFormatoSeleccionado;
-    if (_selectedRateFormat['value'] == 'annual') {
-      tasaEnFormatoSeleccionado = pow(1 + tasaPorPeriodo, periodsPerYear) - 1;
-    } else {
-      // Convertir de tasa anual efectiva a tasa periódica en el formato seleccionado
-      tasaEnFormatoSeleccionado =
-          pow(
-            1 + pow(1 + tasaPorPeriodo, periodsPerYear) - 1,
-            1 / _selectedRateFormat['factor'],
-          ) -
-          1;
-    }
-
-    setState(() {
-      _calculatedValue =
-          tasaEnFormatoSeleccionado * 100; // Convertir a porcentaje
-      _totalAmount = montoCompuesto;
-      _hasCalculated = true;
-    });
-
-    // Desplazar hacia abajo para mostrar los resultados
-    _scrollToResults();
-  }
-
-  // Calcular Tiempo (n = (Log MC - Log C) / Log(1+i))
-  void _calculateTiempo() {
-    // Validar que los campos necesarios tengan valores
-    if (_capitalController.text.isEmpty ||
-        _tasaController.text.isEmpty ||
-        _montoController.text.isEmpty) {
+    // Validar campo de período de diferimiento para capitalización diferida
+    if (_selectedCapitalizationType['value'] == 'deferred' &&
+        _deferralPeriodController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Por favor completa los campos de capital, tasa y monto compuesto',
-          ),
+          content: Text('Por favor ingresa el período de diferimiento'),
           backgroundColor: Colors.red,
         ),
       );
@@ -638,91 +528,172 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
     }
 
     // Convertir valores a números
-    final capital = double.parse(_capitalController.text.replaceAll(',', '.'));
-    final montoCompuesto = double.parse(
-      _montoController.text.replaceAll(',', '.'),
+    final principal = double.parse(
+      _principalController.text.replaceAll(',', '.'),
+    );
+    final finalAmount = double.parse(
+      _finalAmountController.text.replaceAll(',', '.'),
     );
 
-    // Obtener períodos de capitalización por año
-    final periodsPerYear = _selectedFrequency['periods'];
+    // Obtener tiempo en años
+    final timeInYears = _calculateTimeInYears();
 
-    // Calcular tasa por período
-    final tasaPorPeriodo = _getPeriodicRate();
+    // Calcular según el tipo de capitalización seleccionado
+    double rate = 0.0;
 
-    // Calcular tiempo en períodos usando la fórmula n = (Log MC - Log C) / Log(1+i)
-    final periodsTime =
-        (log(montoCompuesto) - log(capital)) / log(1 + tasaPorPeriodo);
+    switch (_selectedCapitalizationType['value']) {
+      case 'simple':
+        // Capitalización Simple: i = (M/C - 1)/t
+        rate = (finalAmount / principal - 1) / timeInYears;
+        break;
 
-    // Convertir a tiempo en años
-    final timeInYears = periodsTime / periodsPerYear;
+      case 'compound':
+        // Capitalización Compuesta: i = n * [(M/C)^(1/(n*t)) - 1]
+        final compoundingFrequency = _selectedFrequency['times'];
+        rate =
+            compoundingFrequency *
+            (pow(
+                  finalAmount / principal,
+                  1 / (compoundingFrequency * timeInYears),
+                ) -
+                1);
+        break;
+
+      case 'continuous':
+        // Capitalización Continua: i = ln(M/C)/t
+        rate = log(finalAmount / principal) / timeInYears;
+        break;
+
+      case 'periodic':
+        // Capitalización Periódica: i = (M/C)^(1/t) - 1
+        rate = pow(finalAmount / principal, 1 / timeInYears) - 1;
+        break;
+
+      case 'anticipated':
+        // Capitalización Anticipada: i = (1 - C/M)/t
+        rate = (1 - principal / finalAmount) / timeInYears;
+        break;
+
+      case 'deferred':
+        // Capitalización Diferida: i = (M/C)^(1/(t-d)) - 1
+        final deferralPeriod = double.parse(
+          _deferralPeriodController.text.replaceAll(',', '.'),
+        );
+        if (deferralPeriod >= timeInYears) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Error: El período de diferimiento debe ser menor que el tiempo total',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+        rate =
+            pow(finalAmount / principal, 1 / (timeInYears - deferralPeriod)) -
+            1;
+        break;
+    }
+
+    final interestEarned = finalAmount - principal;
+
+    setState(() {
+      _calculatedValue = rate * 100; // Convertir a porcentaje
+      _interestEarned = interestEarned;
+      _hasCalculated = true;
+    });
+
+    // Desplazar hacia abajo para mostrar los resultados
+    _scrollToResults();
+  }
+
+  void _calculateTime() {
+    // Validar que los campos necesarios tengan valores
+    if (_principalController.text.isEmpty ||
+        _rateController.text.isEmpty ||
+        _finalAmountController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Por favor completa los campos de capital, tasa y monto final',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Validar campo de período de diferimiento para capitalización diferida
+    if (_selectedCapitalizationType['value'] == 'deferred' &&
+        _deferralPeriodController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Por favor ingresa el período de diferimiento'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Convertir valores a números
+    final principal = double.parse(
+      _principalController.text.replaceAll(',', '.'),
+    );
+    final rate =
+        double.parse(_rateController.text.replaceAll(',', '.')) /
+        100; // Convertir a decimal
+    final finalAmount = double.parse(
+      _finalAmountController.text.replaceAll(',', '.'),
+    );
+
+    // Calcular según el tipo de capitalización seleccionado
+    double timeInYears = 0.0;
+
+    switch (_selectedCapitalizationType['value']) {
+      case 'simple':
+        // Capitalización Simple: t = (M/C - 1)/i
+        timeInYears = (finalAmount / principal - 1) / rate;
+        break;
+
+      case 'compound':
+        // Capitalización Compuesta: t = ln(M/C)/(n * ln(1 + i/n))
+        final compoundingFrequency = _selectedFrequency['times'];
+        timeInYears =
+            log(finalAmount / principal) /
+            (compoundingFrequency * log(1 + rate / compoundingFrequency));
+        break;
+
+      case 'continuous':
+        // Capitalización Continua: t = ln(M/C)/i
+        timeInYears = log(finalAmount / principal) / rate;
+        break;
+
+      case 'periodic':
+        // Capitalización Periódica: t = ln(M/C)/ln(1 + i)
+        timeInYears = log(finalAmount / principal) / log(1 + rate);
+        break;
+
+      case 'anticipated':
+        // Capitalización Anticipada: t = (1 - C/M)/i
+        timeInYears = (1 - principal / finalAmount) / rate;
+        break;
+
+      case 'deferred':
+        // Capitalización Diferida: t = ln(M/C)/ln(1 + i) + d
+        final deferralPeriod = double.parse(
+          _deferralPeriodController.text.replaceAll(',', '.'),
+        );
+        timeInYears =
+            log(finalAmount / principal) / log(1 + rate) + deferralPeriod;
+        break;
+    }
+
+    final interestEarned = finalAmount - principal;
 
     setState(() {
       _calculatedValue = timeInYears;
-      _totalAmount = montoCompuesto;
-      _hasCalculated = true;
-    });
-
-    // Desplazar hacia abajo para mostrar los resultados
-    _scrollToResults();
-  }
-
-  // Calcular Monto Compuesto (MC = C(1+i)^n)
-  void _calculateMonto() {
-    // Validar que los campos necesarios tengan valores
-    if (_capitalController.text.isEmpty || _tasaController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Por favor completa los campos de capital y tasa'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
-    }
-
-    // Validar que haya al menos un valor de tiempo
-    if (_advancedTimeMode) {
-      if (_yearsController.text.isEmpty &&
-          _monthsController.text.isEmpty &&
-          _daysController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Por favor ingresa al menos un valor de tiempo'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-    } else {
-      if (_simpleTimeController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Por favor ingresa el valor de tiempo'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-    }
-
-    // Convertir valores a números
-    final capital = double.parse(_capitalController.text.replaceAll(',', '.'));
-
-    // Obtener tiempo en años
-    final timeInYears = _calculateTimeInYears();
-
-    // Obtener número de períodos de capitalización
-    final periodsPerYear = _selectedFrequency['periods'];
-    final totalPeriods = timeInYears * periodsPerYear;
-
-    // Calcular tasa por período
-    final tasaPorPeriodo = _getPeriodicRate();
-
-    // Calcular monto compuesto usando la fórmula MC = C(1+i)^n
-    final montoCompuesto = capital * pow(1 + tasaPorPeriodo, totalPeriods);
-
-    setState(() {
-      _calculatedValue = montoCompuesto;
-      _totalAmount = montoCompuesto;
+      _interestEarned = interestEarned;
       _hasCalculated = true;
     });
 
@@ -743,23 +714,17 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
   // Limpiar todos los campos
   void _clearFields() {
     setState(() {
-      _capitalController.clear();
-      _tasaController.clear();
-      _interesController.clear();
-      _montoController.clear();
+      _principalController.clear();
+      _rateController.clear();
+      _finalAmountController.clear();
+      _deferralPeriodController.clear();
       _simpleTimeController.clear();
       _yearsController.clear();
       _monthsController.clear();
       _daysController.clear();
       _calculatedValue = 0.0;
-      _totalAmount = 0.0;
+      _interestEarned = 0.0;
       _hasCalculated = false;
-
-      // Limpiar errores
-      _errors['capital'] = '';
-      _errors['tasa'] = '';
-      _errors['monto'] = '';
-      _errors['tiempo'] = '';
     });
 
     // Mostrar mensaje de confirmación
@@ -773,80 +738,52 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
 
   // Generar descripción del tiempo para mostrar en resultados
   String _getTimeDescription() {
-    if (_variableToCalculate == 'tiempo') {
-      // Si estamos calculando el tiempo, mostrar el resultado calculado
-      double years = _calculatedValue;
-      int fullYears = years.floor();
-      double remainingMonths = (years - fullYears) * 12;
-      int months = remainingMonths.floor();
-      double remainingDays = (remainingMonths - months) * 30; // Aproximación
-      int days = remainingDays.round();
-
+    if (_advancedTimeMode) {
       List<String> parts = [];
-      if (fullYears > 0) {
-        parts.add('$fullYears año${fullYears == 1 ? '' : 's'}');
+
+      if (_yearsController.text.isNotEmpty &&
+          double.parse(_yearsController.text.replaceAll(',', '.')) > 0) {
+        double years = double.parse(_yearsController.text.replaceAll(',', '.'));
+        parts.add(
+          '${years.toStringAsFixed(years.truncateToDouble() == years ? 0 : 2)} año${years == 1 ? '' : 's'}',
+        );
       }
-      if (months > 0) {
-        parts.add('$months mes${months == 1 ? '' : 'es'}');
+
+      if (_monthsController.text.isNotEmpty &&
+          double.parse(_monthsController.text.replaceAll(',', '.')) > 0) {
+        double months = double.parse(
+          _monthsController.text.replaceAll(',', '.'),
+        );
+        parts.add(
+          '${months.toStringAsFixed(months.truncateToDouble() == months ? 0 : 2)} mes${months == 1 ? '' : 'es'}',
+        );
       }
-      if (days > 0) {
-        parts.add('$days día${days == 1 ? '' : 's'}');
+
+      if (_daysController.text.isNotEmpty &&
+          double.parse(_daysController.text.replaceAll(',', '.')) > 0) {
+        double days = double.parse(_daysController.text.replaceAll(',', '.'));
+        parts.add(
+          '${days.toStringAsFixed(days.truncateToDouble() == days ? 0 : 2)} día${days == 1 ? '' : 's'}',
+        );
       }
 
       return parts.join(', ');
     } else {
-      // Si no estamos calculando el tiempo, mostrar los valores ingresados
-      if (_advancedTimeMode) {
-        List<String> parts = [];
-
-        if (_yearsController.text.isNotEmpty &&
-            double.parse(_yearsController.text.replaceAll(',', '.')) > 0) {
-          double years = double.parse(
-            _yearsController.text.replaceAll(',', '.'),
-          );
-          parts.add(
-            '${years.toStringAsFixed(years.truncateToDouble() == years ? 0 : 2)} año${years == 1 ? '' : 's'}',
-          );
-        }
-
-        if (_monthsController.text.isNotEmpty &&
-            double.parse(_monthsController.text.replaceAll(',', '.')) > 0) {
-          double months = double.parse(
-            _monthsController.text.replaceAll(',', '.'),
-          );
-          parts.add(
-            '${months.toStringAsFixed(months.truncateToDouble() == months ? 0 : 2)} mes${months == 1 ? '' : 'es'}',
-          );
-        }
-
-        if (_daysController.text.isNotEmpty &&
-            double.parse(_daysController.text.replaceAll(',', '.')) > 0) {
-          double days = double.parse(_daysController.text.replaceAll(',', '.'));
-          parts.add(
-            '${days.toStringAsFixed(days.truncateToDouble() == days ? 0 : 2)} día${days == 1 ? '' : 's'}',
-          );
-        }
-
-        return parts.join(', ');
-      } else {
-        return '${_simpleTimeController.text.replaceAll(',', '.')} ${_selectedTimeUnit['label'].toLowerCase()}';
-      }
+      return '${_simpleTimeController.text.replaceAll(',', '.')} ${_selectedTimeUnit['label'].toLowerCase()}';
     }
   }
 
   // Obtener el título del resultado según la variable calculada
   String _getResultTitle() {
     switch (_variableToCalculate) {
-      case 'interes':
-        return 'Interés compuesto (IC):';
-      case 'capital':
-        return 'Capital (C):';
-      case 'tasa':
-        return 'Tasa de interés ${_selectedRateFormat['label'].toLowerCase()} (i):';
-      case 'tiempo':
-        return 'Tiempo (n):';
-      case 'monto':
-        return 'Monto compuesto (MC):';
+      case 'finalAmount':
+        return 'Monto final:';
+      case 'principal':
+        return 'Capital inicial:';
+      case 'rate':
+        return 'Tasa de interés anual:';
+      case 'time':
+        return 'Tiempo en años:';
       default:
         return '';
     }
@@ -855,13 +792,12 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
   // Obtener el valor formateado del resultado
   String _getFormattedResult() {
     switch (_variableToCalculate) {
-      case 'interes':
-      case 'capital':
-      case 'monto':
+      case 'finalAmount':
+      case 'principal':
         return '\$${_formatNumber(_calculatedValue)}';
-      case 'tasa':
+      case 'rate':
         return '${_formatNumber(_calculatedValue)}%';
-      case 'tiempo':
+      case 'time':
         return '${_formatNumber(_calculatedValue)} años';
       default:
         return '';
@@ -871,39 +807,16 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
   // Obtener el ícono para el resultado
   IconData _getResultIcon() {
     switch (_variableToCalculate) {
-      case 'interes':
-        return Icons.trending_up;
-      case 'capital':
-        return Icons.attach_money;
-      case 'tasa':
-        return Icons.percent;
-      case 'tiempo':
-        return Icons.access_time;
-      case 'monto':
+      case 'finalAmount':
         return Icons.account_balance_wallet;
+      case 'principal':
+        return Icons.attach_money;
+      case 'rate':
+        return Icons.percent;
+      case 'time':
+        return Icons.access_time;
       default:
         return Icons.calculate;
-    }
-  }
-
-  // Método para calcular el interés de manera segura
-  double _getInterestAmount() {
-    try {
-      if (_variableToCalculate == 'interes') {
-        return _calculatedValue;
-      } else if (_variableToCalculate == 'monto') {
-        return _calculatedValue -
-            double.parse(_capitalController.text.replaceAll(',', '.'));
-      } else {
-        // Para otros cálculos, el interés es la diferencia entre monto y capital
-        return _totalAmount -
-            (_variableToCalculate == 'capital'
-                ? _calculatedValue
-                : double.parse(_capitalController.text.replaceAll(',', '.')));
-      }
-    } catch (e) {
-      // En caso de error, devolver 0
-      return 0;
     }
   }
 
@@ -913,14 +826,14 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
         title: Text(
-          'Interés Compuesto',
+          'Capitalización',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
             fontSize: 22,
           ),
         ),
-        backgroundColor: const Color(0xFF4CAF50),
+        backgroundColor: _primaryColor,
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.white),
         shape: RoundedRectangleBorder(
@@ -942,6 +855,7 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 15),
+
               // Tarjeta de fórmula
               Container(
                 width: double.infinity,
@@ -965,18 +879,18 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                         Container(
                           padding: EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF4CAF50).withOpacity(0.1),
+                            color: _primaryColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
-                            Icons.auto_graph,
-                            color: const Color(0xFF4CAF50),
+                            Icons.calculate_outlined,
+                            color: _primaryColor,
                             size: 28,
                           ),
                         ),
                         SizedBox(width: 15),
                         Text(
-                          '¿Qué es el Interés Compuesto?',
+                          '¿Qué es la Capitalización?',
                           style: TextStyle(
                             color: Colors.black,
                             fontSize: 20,
@@ -987,39 +901,128 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                     ),
                     const SizedBox(height: 15),
                     Text(
-                      'El interés compuesto es aquel que se calcula sobre el capital inicial más los intereses acumulados en períodos anteriores. A diferencia del interés simple, el interés compuesto genera "interés sobre interés", lo que resulta en un crecimiento exponencial del capital a lo largo del tiempo.',
+                      'La capitalización es un proceso financiero donde los intereses generados en cada período se suman al capital para el siguiente período. Esto permite que el capital crezca de manera exponencial, ya que los intereses generan nuevos intereses en los períodos subsiguientes.',
                       style: TextStyle(
                         color: Colors.black.withOpacity(0.7),
                         fontSize: 16,
                         height: 1.5,
                       ),
                     ),
-
                     const SizedBox(height: 20),
+
+                    // Selector de tipo de capitalización
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tipo de Capitalización',
+                          style: TextStyle(
+                            color: const Color(0xFF293431),
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(15),
+                            border: Border.all(color: Colors.grey[300]!),
+                            color: _primaryColor.withOpacity(0.05),
+                          ),
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              isExpanded: true,
+                              value: _selectedCapitalizationType['value'],
+                              hint: Text('Seleccione tipo de capitalización'),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedCapitalizationType =
+                                      _capitalizationTypes.firstWhere(
+                                        (type) => type['value'] == value,
+                                      );
+                                });
+                              },
+                              icon: Icon(
+                                Icons.arrow_drop_down_circle_outlined,
+                                color: _primaryColor,
+                              ),
+                              items:
+                                  _capitalizationTypes.map((type) {
+                                    return DropdownMenuItem<String>(
+                                      value: type['value'],
+                                      child: Text(
+                                        type['label'],
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 15),
+
+                    // Descripción del tipo de capitalización seleccionado
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: _primaryColor.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: _primaryColor,
+                            size: 20,
+                          ),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _selectedCapitalizationType['description'],
+                              style: TextStyle(
+                                color: const Color(0xFF151616),
+                                fontSize: 14,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 15),
+
                     Container(
                       padding: EdgeInsets.symmetric(
                         horizontal: 15,
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF4CAF50).withOpacity(0.05),
+                        color: _primaryColor.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: const Color(0xFF4CAF50).withOpacity(0.2),
+                          color: _primaryColor.withOpacity(0.2),
                         ),
                       ),
                       child: Row(
                         children: [
-                          Icon(
-                            Icons.lightbulb_outline,
-                            color: const Color(0xFF4CAF50),
-                          ),
+                          Icon(Icons.lightbulb_outline, color: _primaryColor),
                           SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               'Fórmula',
                               style: TextStyle(
-                                color: const Color(0xFF4CAF50),
+                                color: _primaryColor,
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -1033,10 +1036,10 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(15),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF4CAF50).withOpacity(0.1),
+                        color: _primaryColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(15),
                         border: Border.all(
-                          color: const Color(0xFF4CAF50).withOpacity(0.3),
+                          color: _primaryColor.withOpacity(0.3),
                         ),
                       ),
                       child: Column(
@@ -1048,7 +1051,7 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
-                              'A = P(1 + r/n)^(nt)',
+                              _selectedCapitalizationType['formula'],
                               style: TextStyle(
                                 color: const Color(0xFF293431),
                                 fontSize: 24,
@@ -1061,11 +1064,16 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                           const SizedBox(height: 15),
                           Row(
                             children: [
-                              _buildFormulaItem('A', 'Monto futuro'),
-                              _buildFormulaItem('P', 'Capital inicial'),
-                              _buildFormulaItem('r', 'Tasa de interés anual'),
-                              _buildFormulaItem('n', 'Períodos por año'),
-                              _buildFormulaItem('t', 'Tiempo en años'),
+                              _buildFormulaItem('M', 'Monto final'),
+                              _buildFormulaItem('C', 'Capital inicial'),
+                              _buildFormulaItem('i', 'Tasa anual'),
+                              if (_selectedCapitalizationType['value'] ==
+                                  'compound')
+                                _buildFormulaItem('n', 'Frecuencia'),
+                              if (_selectedCapitalizationType['value'] ==
+                                  'deferred')
+                                _buildFormulaItem('d', 'Diferimiento'),
+                              _buildFormulaItem('t', 'Tiempo (años)'),
                             ],
                           ),
                         ],
@@ -1075,20 +1083,20 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                     Container(
                       padding: EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF4CAF50).withOpacity(0.05),
+                        color: _primaryColor.withOpacity(0.05),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
                         children: [
                           Icon(
                             Icons.info_outline,
-                            color: const Color(0xFF4CAF50),
+                            color: _primaryColor,
                             size: 20,
                           ),
                           SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              'El interés generado será: A - P',
+                              'El interés generado será: M - C',
                               style: TextStyle(
                                 color: const Color(0xFF151616),
                                 fontSize: 16,
@@ -1128,12 +1136,12 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                         Container(
                           padding: EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF4CAF50).withOpacity(0.1),
+                            color: _primaryColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
                             Icons.calculate_rounded,
-                            color: const Color(0xFF4CAF50),
+                            color: _primaryColor,
                             size: 24,
                           ),
                         ),
@@ -1150,7 +1158,7 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // Selector de variable a calcular (ahora como menú desplegable)
+                    // Selector de variable a calcular
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1165,159 +1173,129 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                         const SizedBox(height: 10),
                         Container(
                           width: double.infinity,
-                          padding: EdgeInsets.symmetric(horizontal: 15),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 5,
+                          ),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(15),
                             border: Border.all(color: Colors.grey[300]!),
-                            color: const Color(0xFF4CAF50).withOpacity(0.05),
+                            color: _primaryColor.withOpacity(0.05),
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
+                              isExpanded: true,
                               value: _variableToCalculate,
+                              hint: Text('Seleccione una opción'),
+                              onChanged: (value) {
+                                setState(() {
+                                  _variableToCalculate = value!;
+                                });
+                              },
                               icon: Icon(
                                 Icons.arrow_drop_down_circle_outlined,
-                                color: const Color(0xFF4CAF50),
+                                color: _primaryColor,
                               ),
-                              isExpanded: true,
-                              borderRadius: BorderRadius.circular(10),
-                              items:
-                                  _calculationOptions.map((option) {
-                                    return DropdownMenuItem<String>(
-                                      value: option['value'],
-                                      child: Text(
-                                        option['label'],
-                                        style: TextStyle(
-                                          color: const Color(0xFF151616),
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _variableToCalculate = newValue!;
-                                });
-                              },
+                              items: [
+                                DropdownMenuItem(
+                                  value: 'finalAmount',
+                                  child: Text(
+                                    'Monto final (M)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'principal',
+                                  child: Text(
+                                    'Capital inicial (C)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'rate',
+                                  child: Text(
+                                    'Tasa de interés (i)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'time',
+                                  child: Text(
+                                    'Tiempo (t)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
                       ],
                     ),
+
                     const SizedBox(height: 20),
 
-                    // Frecuencia de capitalización
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Frecuencia de capitalización',
-                          style: TextStyle(
-                            color: const Color(0xFF293431),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 15),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(15),
-                            border: Border.all(color: Colors.grey[300]!),
-                            color: const Color(0xFF4CAF50).withOpacity(0.05),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: _selectedFrequency['value'],
-                              icon: Icon(
-                                Icons.arrow_drop_down,
-                                color: const Color(0xFF4CAF50),
-                              ),
-                              isExpanded: true,
-                              borderRadius: BorderRadius.circular(10),
-                              items:
-                                  _compoundingFrequencies.map((frequency) {
-                                    return DropdownMenuItem<String>(
-                                      value: frequency['value'],
-                                      child: Text(
-                                        frequency['label'],
-                                        style: TextStyle(
-                                          color: const Color(0xFF151616),
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                              onChanged: (String? newValue) {
-                                setState(() {
-                                  _selectedFrequency = _compoundingFrequencies
-                                      .firstWhere(
-                                        (frequency) =>
-                                            frequency['value'] == newValue,
-                                      );
-                                });
-                              },
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Formato de tasa de interés (oculto cuando se calcula la tasa)
-                    if (_variableToCalculate != 'tasa') ...[
+                    // Frecuencia de capitalización (solo para capitalización compuesta)
+                    if (_selectedCapitalizationType['value'] == 'compound') ...[
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Formato de tasa de interés',
+                            'Frecuencia de capitalización',
                             style: TextStyle(
                               color: const Color(0xFF293431),
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 10),
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 15),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(15),
                               border: Border.all(color: Colors.grey[300]!),
-                              color: const Color(0xFF4CAF50).withOpacity(0.05),
+                              color: _primaryColor.withOpacity(0.05),
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
-                                value: _selectedRateFormat['value'],
-                                icon: Icon(
-                                  Icons.arrow_drop_down,
-                                  color: const Color(0xFF4CAF50),
-                                ),
                                 isExpanded: true,
-                                borderRadius: BorderRadius.circular(10),
+                                value: _selectedFrequency['value'],
+                                hint: Text('Seleccione frecuencia'),
+                                onChanged: (value) {
+                                  setState(() {
+                                    _selectedFrequency = _compoundingFrequencies
+                                        .firstWhere(
+                                          (freq) => freq['value'] == value,
+                                        );
+                                  });
+                                },
+                                icon: Icon(
+                                  Icons.arrow_drop_down_circle_outlined,
+                                  color: _primaryColor,
+                                ),
                                 items:
-                                    _interestRateFormats.map((format) {
+                                    _compoundingFrequencies.map((freq) {
                                       return DropdownMenuItem<String>(
-                                        value: format['value'],
+                                        value: freq['value'],
                                         child: Text(
-                                          format['label'],
+                                          freq['label'],
                                           style: TextStyle(
-                                            color: const Color(0xFF151616),
-                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
                                           ),
                                         ),
                                       );
                                     }).toList(),
-                                onChanged: (String? newValue) {
-                                  setState(() {
-                                    _selectedRateFormat = _interestRateFormats
-                                        .firstWhere(
-                                          (format) =>
-                                              format['value'] == newValue,
-                                        );
-                                  });
-                                },
                               ),
                             ),
                           ),
@@ -1326,57 +1304,68 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                       const SizedBox(height: 20),
                     ],
 
-                    // Campo de capital (excepto cuando se calcula C)
-                    if (_variableToCalculate != 'capital') ...[
+                    // Período de diferimiento (solo para capitalización diferida)
+                    if (_selectedCapitalizationType['value'] == 'deferred') ...[
                       _buildInputField(
-                        controller: _capitalController,
-                        label: 'Capital inicial (C)',
-                        hint: 'Ej: 1000000',
-                        prefixIcon: Icons.attach_money,
+                        controller: _deferralPeriodController,
+                        label: 'Período de diferimiento (d) en años',
+                        hint: 'Ej: 2',
+                        prefixIcon: Icons.timelapse,
                         keyboardType: TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        color: const Color(0xFF4CAF50),
-                        errorKey: 'capital',
+                        color: _primaryColor,
                       ),
                       const SizedBox(height: 15),
                     ],
 
-                    // Campo de tasa de interés (excepto cuando se calcula i)
-                    if (_variableToCalculate != 'tasa') ...[
+                    // Campo de capital inicial (excepto cuando se calcula P)
+                    if (_variableToCalculate != 'principal') ...[
                       _buildInputField(
-                        controller: _tasaController,
-                        label:
-                            'Tasa de interés ${_selectedRateFormat['label'].toLowerCase()} (i) %',
+                        controller: _principalController,
+                        label: 'Capital inicial (C)',
+                        hint: 'Ej: 9000000',
+                        prefixIcon: Icons.attach_money,
+                        keyboardType: TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        color: _primaryColor,
+                      ),
+                      const SizedBox(height: 15),
+                    ],
+
+                    // Campo de tasa de interés (excepto cuando se calcula r)
+                    if (_variableToCalculate != 'rate') ...[
+                      _buildInputField(
+                        controller: _rateController,
+                        label: 'Tasa de interés anual (i) %',
                         hint: 'Ej: 5',
                         prefixIcon: Icons.percent,
                         keyboardType: TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        color: const Color(0xFF4CAF50),
-                        errorKey: 'tasa',
+                        color: _primaryColor,
                       ),
                       const SizedBox(height: 15),
                     ],
 
-                    // Campo de monto compuesto (excepto cuando se calcula MC)
-                    if (_variableToCalculate != 'monto') ...[
+                    // Campo de monto final (excepto cuando se calcula A)
+                    if (_variableToCalculate != 'finalAmount') ...[
                       _buildInputField(
-                        controller: _montoController,
-                        label: 'Monto compuesto (MC)',
-                        hint: 'Ej: 1500000',
+                        controller: _finalAmountController,
+                        label: 'Monto final (M)',
+                        hint: 'Ej: 10000000',
                         prefixIcon: Icons.account_balance_wallet,
                         keyboardType: TextInputType.numberWithOptions(
                           decimal: true,
                         ),
-                        color: const Color(0xFF4CAF50),
-                        errorKey: 'monto',
+                        color: _primaryColor,
                       ),
                       const SizedBox(height: 15),
                     ],
 
                     // Selector de modo de tiempo (excepto cuando se calcula t)
-                    if (_variableToCalculate != 'tiempo') ...[
+                    if (_variableToCalculate != 'time') ...[
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -1402,14 +1391,10 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                                 onChanged: (value) {
                                   setState(() {
                                     _advancedTimeMode = value;
-                                    // Limpiar errores de tiempo al cambiar el modo
-                                    _errors['tiempo'] = '';
                                   });
                                 },
-                                activeColor: const Color(0xFF4CAF50),
-                                activeTrackColor: const Color(
-                                  0xFF9C27B0,
-                                ).withOpacity(0.3),
+                                activeColor: _primaryColor,
+                                activeTrackColor: Colors.green.withOpacity(0.3),
                               ),
                             ],
                           ),
@@ -1425,127 +1410,62 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                             // Campo de entrada para el valor del tiempo
                             Expanded(
                               flex: 3,
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    decoration: BoxDecoration(
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.03),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                      ],
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.03),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3),
                                     ),
-                                    child: TextField(
-                                      controller: _simpleTimeController,
-                                      keyboardType:
-                                          TextInputType.numberWithOptions(
-                                            decimal: true,
-                                          ),
-                                      decoration: InputDecoration(
-                                        hintText: 'Ej: 2',
-                                        hintStyle: TextStyle(
-                                          color: Colors.grey[400],
-                                        ),
-                                        prefixIcon: Icon(
-                                          Icons.access_time,
-                                          color:
-                                              _errors['tiempo']!.isNotEmpty &&
-                                                      _simpleTimeController
-                                                          .text
-                                                          .isNotEmpty
-                                                  ? _errorColor
-                                                  : const Color(0xFF4CAF50),
-                                        ),
-                                        suffixIcon:
-                                            _simpleTimeController
-                                                    .text
-                                                    .isNotEmpty
-                                                ? Icon(
-                                                  _errors['tiempo']!.isNotEmpty
-                                                      ? Icons.error_outline
-                                                      : Icons
-                                                          .check_circle_outline,
-                                                  color:
-                                                      _errors['tiempo']!
-                                                              .isNotEmpty
-                                                          ? _errorColor
-                                                          : _successColor,
-                                                )
-                                                : null,
-                                        border: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            15,
-                                          ),
-                                          borderSide: BorderSide.none,
-                                        ),
-                                        enabledBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            15,
-                                          ),
-                                          borderSide:
-                                              _simpleTimeController
-                                                      .text
-                                                      .isNotEmpty
-                                                  ? BorderSide(
-                                                    color:
-                                                        _errors['tiempo']!
-                                                                .isNotEmpty
-                                                            ? _errorColor
-                                                            : _successColor,
-                                                    width: 1.5,
-                                                  )
-                                                  : BorderSide.none,
-                                        ),
-                                        focusedBorder: OutlineInputBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            15,
-                                          ),
-                                          borderSide: BorderSide(
-                                            color:
-                                                _errors['tiempo']!.isNotEmpty
-                                                    ? _errorColor
-                                                    : const Color(0xFF4CAF50),
-                                            width: 2,
-                                          ),
-                                        ),
-                                        filled: true,
-                                        fillColor: Colors.white,
-                                        contentPadding:
-                                            const EdgeInsets.symmetric(
-                                              horizontal: 15,
-                                              vertical: 15,
-                                            ),
+                                  ],
+                                ),
+                                child: TextField(
+                                  controller: _simpleTimeController,
+                                  keyboardType: TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                                  decoration: InputDecoration(
+                                    hintText: 'Ej: 2',
+                                    hintStyle: TextStyle(
+                                      color: Colors.grey[400],
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.access_time,
+                                      color: _primaryColor,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide(
+                                        color: _primaryColor,
+                                        width: 2,
                                       ),
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: const Color(0xFF151616),
-                                      ),
-                                      inputFormatters: [
-                                        FilteringTextInputFormatter.allow(
-                                          RegExp(r'[0-9.,]'),
-                                        ),
-                                      ],
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 15,
+                                      vertical: 15,
                                     ),
                                   ),
-                                  if (_errors['tiempo']!.isNotEmpty &&
-                                      _simpleTimeController.text.isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        top: 5,
-                                        left: 5,
-                                      ),
-                                      child: Text(
-                                        _errors['tiempo']!,
-                                        style: TextStyle(
-                                          color: _errorColor,
-                                          fontSize: 12,
-                                        ),
-                                      ),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: const Color(0xFF151616),
+                                  ),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(
+                                      RegExp(r'[0-9.,]'),
                                     ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -1571,7 +1491,7 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                                     value: _selectedTimeUnit['value'],
                                     icon: Icon(
                                       Icons.arrow_drop_down,
-                                      color: const Color(0xFF4CAF50),
+                                      color: _primaryColor,
                                     ),
                                     isExpanded: true,
                                     padding: const EdgeInsets.symmetric(
@@ -1609,20 +1529,14 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                       ],
 
                       // Modo de tiempo avanzado
-                      // Reemplazar el bloque de código para el modo de tiempo avanzado
                       if (_advancedTimeMode) ...[
                         Container(
                           padding: const EdgeInsets.all(15),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF4CAF50).withOpacity(0.1),
+                            color: _primaryColor.withOpacity(0.1),
                             borderRadius: BorderRadius.circular(15),
                             border: Border.all(
-                              color:
-                                  _errors['tiempo']!.isNotEmpty
-                                      ? _errorColor.withOpacity(0.5)
-                                      : const Color(
-                                        0xFF9C27B0,
-                                      ).withOpacity(0.3),
+                              color: _primaryColor.withOpacity(0.3),
                             ),
                           ),
                           child: Column(
@@ -1683,7 +1597,7 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                                               10,
                                             ),
                                             borderSide: BorderSide(
-                                              color: const Color(0xFF4CAF50),
+                                              color: _primaryColor,
                                               width: 2,
                                             ),
                                           ),
@@ -1767,7 +1681,7 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                                               10,
                                             ),
                                             borderSide: BorderSide(
-                                              color: const Color(0xFF4CAF50),
+                                              color: _primaryColor,
                                               width: 2,
                                             ),
                                           ),
@@ -1851,7 +1765,7 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                                               10,
                                             ),
                                             borderSide: BorderSide(
-                                              color: const Color(0xFF4CAF50),
+                                              color: _primaryColor,
                                               width: 2,
                                             ),
                                           ),
@@ -1879,63 +1793,27 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                               ),
                               const SizedBox(height: 10),
 
-                              // Mensaje de error para tiempo avanzado
-                              if (_errors['tiempo']!.isNotEmpty)
-                                Container(
-                                  width: double.infinity,
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: 8,
-                                    horizontal: 12,
+                              // Nota informativa
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: _primaryColor,
+                                    size: 16,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: _errorColor.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: _errorColor.withOpacity(0.3),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.error_outline,
-                                        color: _errorColor,
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          _errors['tiempo']!,
-                                          style: TextStyle(
-                                            color: _errorColor,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              else
-                                // Nota informativa
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.info_outline,
-                                      color: const Color(0xFF4CAF50),
-                                      size: 16,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'Puedes combinar años, meses y días para un cálculo más preciso.',
-                                        style: TextStyle(
-                                          color: Colors.grey[700],
-                                          fontSize: 12,
-                                          fontStyle: FontStyle.italic,
-                                        ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Puedes combinar años, meses y días para un cálculo más preciso.',
+                                      style: TextStyle(
+                                        color: Colors.grey[700],
+                                        fontSize: 12,
+                                        fontStyle: FontStyle.italic,
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
@@ -1951,7 +1829,7 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                           child: ElevatedButton(
                             onPressed: _calculate,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF4CAF50),
+                              backgroundColor: _primaryColor,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 15),
                               shape: RoundedRectangleBorder(
@@ -2024,12 +1902,12 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                           Container(
                             padding: EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF4CAF50).withOpacity(0.1),
+                              color: _primaryColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Icon(
                               Icons.analytics_rounded,
-                              color: const Color(0xFF4CAF50),
+                              color: _primaryColor,
                               size: 24,
                             ),
                           ),
@@ -2050,44 +1928,42 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                       Container(
                         padding: EdgeInsets.all(15),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4CAF50).withOpacity(0.1),
+                          color: _primaryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(15),
                         ),
                         child: _buildResultItem(
                           label: _getResultTitle(),
                           value: _getFormattedResult(),
                           icon: _getResultIcon(),
-                          color: const Color(0xFF4CAF50),
+                          color: _primaryColor,
                         ),
                       ),
                       const SizedBox(height: 15),
 
-                      // Interés generado (si no es lo que se calculó)
-                      if (_variableToCalculate != 'interes') ...[
-                        Container(
-                          padding: EdgeInsets.all(15),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF4CAF50).withOpacity(0.05),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: _buildResultItem(
-                            label: 'Interés generado:',
-                            value: '\$${_formatNumber(_getInterestAmount())}',
-                            icon: Icons.trending_up,
-                            color: const Color(0xFF293431),
-                          ),
+                      // Interés generado
+                      Container(
+                        padding: EdgeInsets.all(15),
+                        decoration: BoxDecoration(
+                          color: _primaryColor.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(15),
                         ),
-                        const SizedBox(height: 15),
-                      ],
+                        child: _buildResultItem(
+                          label: 'Interés generado:',
+                          value: '\$${_formatNumber(_interestEarned)}',
+                          icon: Icons.trending_up,
+                          color: Colors.green,
+                        ),
+                      ),
+                      const SizedBox(height: 15),
 
                       // Detalles del cálculo
                       Container(
                         padding: const EdgeInsets.all(15),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF4CAF50).withOpacity(0.05),
+                          color: _primaryColor.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(15),
                           border: Border.all(
-                            color: const Color(0xFF4CAF50).withOpacity(0.2),
+                            color: _primaryColor.withOpacity(0.2),
                           ),
                         ),
                         child: Column(
@@ -2097,7 +1973,7 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                               children: [
                                 Icon(
                                   Icons.info_outline,
-                                  color: const Color(0xFF4CAF50),
+                                  color: _primaryColor,
                                   size: 20,
                                 ),
                                 SizedBox(width: 10),
@@ -2121,11 +1997,21 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Mostrar capital (si no es lo que se calculó)
-                                  if (_variableToCalculate != 'capital' &&
-                                      _capitalController.text.isNotEmpty) ...[
+                                  // Mostrar tipo de capitalización
+                                  Text(
+                                    'Tipo de capitalización: ${_selectedCapitalizationType['label']}',
+                                    style: TextStyle(
+                                      color: const Color(0xFF293431),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Divider(height: 20),
+
+                                  // Mostrar capital inicial (si no es lo que se calculó)
+                                  if (_variableToCalculate != 'principal') ...[
                                     Text(
-                                      'Capital inicial: \$${_formatNumber(double.parse(_capitalController.text.replaceAll(',', '.')))}',
+                                      'Capital inicial: \$${_formatNumber(double.parse(_principalController.text.replaceAll(',', '.')))}',
                                       style: TextStyle(
                                         color: const Color(0xFF293431),
                                         fontSize: 14,
@@ -2136,18 +2022,9 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                                   ],
 
                                   // Mostrar tasa de interés (si no es lo que se calculó)
-                                  if (_variableToCalculate != 'tasa' &&
-                                      _tasaController.text.isNotEmpty) ...[
+                                  if (_variableToCalculate != 'rate') ...[
                                     Text(
-                                      'Tasa de interés ${_selectedRateFormat['label'].toLowerCase()}: ${_tasaController.text.replaceAll(',', '.')}%',
-                                      style: TextStyle(
-                                        color: const Color(0xFF293431),
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    Text(
-                                      'Tasa efectiva por período: ${(_getPeriodicRate() * 100).toStringAsFixed(4)}%',
+                                      'Tasa de interés anual: ${_rateController.text.replaceAll(',', '.')}%',
                                       style: TextStyle(
                                         color: const Color(0xFF293431),
                                         fontSize: 14,
@@ -2157,11 +2034,11 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                                     Divider(height: 20),
                                   ],
 
-                                  // Mostrar monto compuesto (si no es lo que se calculó)
-                                  if (_variableToCalculate != 'monto' &&
-                                      _montoController.text.isNotEmpty) ...[
+                                  // Mostrar monto final (si no es lo que se calculó)
+                                  if (_variableToCalculate !=
+                                      'finalAmount') ...[
                                     Text(
-                                      'Monto compuesto: \$${_formatNumber(double.parse(_montoController.text.replaceAll(',', '.')))}',
+                                      'Monto final: \$${_formatNumber(double.parse(_finalAmountController.text.replaceAll(',', '.')))}',
                                       style: TextStyle(
                                         color: const Color(0xFF293431),
                                         fontSize: 14,
@@ -2172,7 +2049,7 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                                   ],
 
                                   // Mostrar tiempo (si no es lo que se calculó)
-                                  if (_variableToCalculate != 'tiempo') ...[
+                                  if (_variableToCalculate != 'time') ...[
                                     Text(
                                       'Tiempo: ${_getTimeDescription()}',
                                       style: TextStyle(
@@ -2192,15 +2069,35 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                                     Divider(height: 20),
                                   ],
 
-                                  // Frecuencia de capitalización
-                                  Text(
-                                    'Frecuencia de capitalización: ${_selectedFrequency['label']} (${_selectedFrequency['periods']} período(s) por año)',
-                                    style: TextStyle(
-                                      color: const Color(0xFF293431),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
+                                  // Mostrar frecuencia de capitalización (solo para capitalización compuesta)
+                                  if (_selectedCapitalizationType['value'] ==
+                                      'compound') ...[
+                                    Text(
+                                      'Frecuencia de capitalización: ${_selectedFrequency['label']} (${_selectedFrequency['times']} veces al año)',
+                                      style: TextStyle(
+                                        color: const Color(0xFF293431),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
-                                  ),
+                                    Divider(height: 20),
+                                  ],
+
+                                  // Mostrar período de diferimiento (solo para capitalización diferida)
+                                  if (_selectedCapitalizationType['value'] ==
+                                          'deferred' &&
+                                      _deferralPeriodController
+                                          .text
+                                          .isNotEmpty) ...[
+                                    Text(
+                                      'Período de diferimiento: ${_deferralPeriodController.text.replaceAll(',', '.')} años',
+                                      style: TextStyle(
+                                        color: const Color(0xFF293431),
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ),
                             ),
@@ -2216,8 +2113,8 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              const Color(0xFF4CAF50).withOpacity(0.1),
-                              const Color(0xFF4CAF50).withOpacity(0.05),
+                              _primaryColor.withOpacity(0.1),
+                              _primaryColor.withOpacity(0.05),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -2226,14 +2123,11 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
                         ),
                         child: Row(
                           children: [
-                            Icon(
-                              Icons.lightbulb_outline,
-                              color: const Color(0xFF4CAF50),
-                            ),
+                            Icon(Icons.lightbulb_outline, color: _primaryColor),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'El interés compuesto genera un crecimiento exponencial del capital a lo largo del tiempo, ya que se calcula sobre el capital inicial más los intereses acumulados en períodos anteriores.',
+                                'La capitalización genera más rendimiento que el interés simple porque los intereses se reinvierten y generan más intereses en cada período.',
                                 style: TextStyle(
                                   color: Colors.black87,
                                   fontSize: 14,
@@ -2263,14 +2157,14 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFF4CAF50).withOpacity(0.1),
+              color: _primaryColor.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Center(
               child: Text(
                 symbol,
                 style: TextStyle(
-                  color: const Color(0xFF4CAF50),
+                  color: _primaryColor,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -2288,7 +2182,6 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
     );
   }
 
-  // Modificar el método _buildInputField para mostrar errores de validación
   // Widget para los campos de entrada
   Widget _buildInputField({
     required TextEditingController controller,
@@ -2297,18 +2190,7 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
     required IconData prefixIcon,
     required TextInputType keyboardType,
     required Color color,
-    String? errorKey,
   }) {
-    // Determinar el color del borde basado en el estado de validación
-    Color borderColor = color;
-    if (errorKey != null &&
-        _errors[errorKey]!.isNotEmpty &&
-        controller.text.isNotEmpty) {
-      borderColor = _errorColor;
-    } else if (controller.text.isNotEmpty) {
-      borderColor = _successColor;
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2337,41 +2219,18 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(color: Colors.grey[400]),
-              prefixIcon: Icon(
-                prefixIcon,
-                color:
-                    errorKey != null &&
-                            _errors[errorKey]!.isNotEmpty &&
-                            controller.text.isNotEmpty
-                        ? _errorColor
-                        : color,
-              ),
-              suffixIcon:
-                  controller.text.isNotEmpty
-                      ? Icon(
-                        errorKey != null && _errors[errorKey]!.isNotEmpty
-                            ? Icons.error_outline
-                            : Icons.check_circle_outline,
-                        color:
-                            errorKey != null && _errors[errorKey]!.isNotEmpty
-                                ? _errorColor
-                                : _successColor,
-                      )
-                      : null,
+              prefixIcon: Icon(prefixIcon, color: color),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(15),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(15),
-                borderSide:
-                    controller.text.isNotEmpty
-                        ? BorderSide(color: borderColor, width: 1.5)
-                        : BorderSide.none,
+                borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(15),
-                borderSide: BorderSide(color: borderColor, width: 2),
+                borderSide: BorderSide(color: color, width: 2),
               ),
               filled: true,
               fillColor: Colors.white,
@@ -2386,16 +2245,6 @@ class _CompoundInterestScreenState extends State<CompoundInterestScreen> {
             ],
           ),
         ),
-        if (errorKey != null &&
-            _errors[errorKey]!.isNotEmpty &&
-            controller.text.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 5, left: 5),
-            child: Text(
-              _errors[errorKey]!,
-              style: TextStyle(color: _errorColor, fontSize: 12),
-            ),
-          ),
       ],
     );
   }
